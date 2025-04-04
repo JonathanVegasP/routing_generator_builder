@@ -1,0 +1,7 @@
+builders:
+  routing:
+    import: "package:routing_generator_builder/routing_generator_builder.dart"
+    builder_factories: ["routingBuilder"]
+    build_extensions: {"$lib$": ["routing/routing.dart"]}
+    auto_apply: dependents
+    build_to: source

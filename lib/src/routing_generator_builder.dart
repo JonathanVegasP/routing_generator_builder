@@ -243,14 +243,6 @@ final class RoutingGeneratorBuilder extends Builder {
                       ..name = 'Routing'
                       ..modifier = ClassModifier.final$
                       ..abstract = true
-                      ..constructors.add(
-                        Constructor(
-                          (builder) =>
-                              builder
-                                ..name = '_'
-                                ..constant = true,
-                        ),
-                      )
                       ..methods.add(
                         Method(
                           (builder) =>

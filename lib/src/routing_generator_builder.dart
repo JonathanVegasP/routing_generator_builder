@@ -197,7 +197,13 @@ final class RoutingGeneratorBuilder extends Builder {
         (builder) =>
             builder
               ..type = DirectiveType.import
-              ..url = 'package:go_router/go_router.dart',
+              ..url = 'package:flutter/widgets.dart',
+      ),
+      Directive(
+            (builder) =>
+        builder
+          ..type = DirectiveType.import
+          ..url = 'package:go_router/go_router.dart',
       ),
     ];
     final routeBuffer = StringBuffer('[');

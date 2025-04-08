@@ -9,3 +9,7 @@
 ## 1.0.2
 
 * Using Static Methods instead of anonymous ones
+
+## 1.0.3
+
+* Fixed import for flutter

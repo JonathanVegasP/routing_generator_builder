@@ -1,6 +1,6 @@
 name: routing_generator_builder
 description: "Builder for routing_generator annotation"
-version: 1.0.0
+version: 1.0.2
 
 environment:
   sdk: ^3.7.0

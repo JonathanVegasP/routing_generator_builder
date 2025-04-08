@@ -77,9 +77,9 @@ final class RoutingGeneratorBuilder extends Builder {
   }
 
   static void buildRouteHierarchy(
-      Iterable<Routing> parentRoutes,
-      Iterable<Routing> childRoutes,
-      ) {
+    Iterable<Routing> parentRoutes,
+    Iterable<Routing> childRoutes,
+  ) {
     final Queue<(Routing, List<Routing>, int)> queue = Queue();
 
     // Initialize queue with current parent routes
@@ -129,11 +129,14 @@ final class RoutingGeneratorBuilder extends Builder {
   }
 
   static void buildRouteConfig(
-      StringBuffer routeBuffer,
-      Iterable<Routing> routeHierarchy,
-      ) {
+    StringBuffer routeBuffer,
+    Iterable<Routing> routeHierarchy,
+    List<Method> methods,
+  ) {
     for (final route in routeHierarchy) {
-      final String routePath = route.path.pathSegments.skip(route.skip).join("/");
+      final String routePath = route.path.pathSegments
+          .skip(route.skip)
+          .join("/");
       final String? routeName = route.name;
       final String routePage = route.page;
       final List<Routing> childRoutes = route.children;
@@ -146,14 +149,39 @@ final class RoutingGeneratorBuilder extends Builder {
         routeBuffer.write(", name: '$routeName'");
       }
 
-      routeBuffer.write(", builder: (_,_) =>$isConstant $routePage()");
+      routeBuffer.write(", builder: _build$routePage");
+      methods.add(
+        Method(
+          (builder) =>
+              builder
+                ..name = '_build$routePage'
+                ..returns = refer('Widget')
+                ..lambda = true
+                ..static = true
+                ..requiredParameters.addAll([
+                  Parameter(
+                    (builder) =>
+                        builder
+                          ..name = 'context'
+                          ..type = refer('BuildContext'),
+                  ),
+                  Parameter(
+                    (builder) =>
+                        builder
+                          ..name = 'state'
+                          ..type = refer('GoRouterState'),
+                  ),
+                ])
+                ..body = Code('$isConstant $routePage()'),
+        ),
+      );
 
       // Process child routes efficiently
       if (childRoutes.isNotEmpty) {
         routeBuffer.write(', routes: [');
 
         // Reduce recursive calls by using a loop instead of multiple writes
-        buildRouteConfig(routeBuffer, childRoutes);
+        buildRouteConfig(routeBuffer, childRoutes, methods);
 
         routeBuffer.write(']');
       }
@@ -161,7 +189,6 @@ final class RoutingGeneratorBuilder extends Builder {
       routeBuffer.write('),');
     }
   }
-
 
   @override
   FutureOr<void> build(BuildStep buildStep) async {
@@ -227,10 +254,24 @@ final class RoutingGeneratorBuilder extends Builder {
     // Build route hierarchy in O(n)
     final routeHierarchy = buildRouteTree(routeClasses);
 
+    final methods = <Method>[];
+
     // Generate routing in O(n)
-    buildRouteConfig(routeBuffer, routeHierarchy);
+    buildRouteConfig(routeBuffer, routeHierarchy, methods);
 
     routeBuffer.write(']');
+
+    methods.add(
+      Method(
+        (builder) =>
+            builder
+              ..name = 'routes'
+              ..returns = refer('List<GoRoute>')
+              ..lambda = true
+              ..static = true
+              ..body = Code('$routeBuffer'),
+      ),
+    );
 
     final generatedLibrary = Library(
       (builder) =>
@@ -243,17 +284,7 @@ final class RoutingGeneratorBuilder extends Builder {
                       ..name = 'Routing'
                       ..modifier = ClassModifier.final$
                       ..abstract = true
-                      ..methods.add(
-                        Method(
-                          (builder) =>
-                              builder
-                                ..name = 'routes'
-                                ..returns = refer('List<GoRoute>')
-                                ..lambda = true
-                                ..static = true
-                                ..body = Code('$routeBuffer'),
-                        ),
-                      ),
+                      ..methods.addAll(methods),
               ),
             ),
     );

@@ -120,11 +120,6 @@ final class RoutingGeneratorBuilder extends Builder {
 
       if (childMap.containsKey(parentSegment)) {
         for (final child in childMap[parentSegment]!) {
-          if (child == parent) {
-            print("hello true aqui");
-            continue;
-          }
-
           child.skip = currentDepth;
           parent.addChild(child);
           queue.add((child, nextLevelChildren, currentDepth + 1));

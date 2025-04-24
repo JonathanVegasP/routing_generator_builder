@@ -238,6 +238,7 @@ final class RoutingGeneratorBuilder extends Builder {
 
       // Process annotated elements in a single pass (O(m))
       for (final element in annotatedElements) {
+        print(element.annotation.objectValue);
         final routingInstance = Routing(
           object: element.annotation.objectValue,
           page: element.element.displayName,

@@ -76,21 +76,25 @@ final class RoutingGeneratorBuilder extends Builder {
     return rootRoute != null ? [rootRoute] : topLevelRoutes;
   }
 
+  static List<Routing> _createArray() {
+    return [];
+  }
+
   static void buildRouteHierarchy(
     Iterable<Routing> parentRoutes,
     Iterable<Routing> childRoutes,
   ) {
-    final Queue<(Routing, List<Routing>, int)> queue = Queue();
+    final Queue<(Routing, Iterable<Routing>, int)> queue = DoubleLinkedQueue();
 
     // Initialize queue with current parent routes
     for (final parent in parentRoutes) {
-      queue.add((parent, childRoutes.toList(), 1));
+      queue.add((parent, childRoutes, 1));
     }
 
     while (queue.isNotEmpty) {
-      final (Routing, List<Routing>, int) current = queue.removeFirst();
+      final (Routing, Iterable<Routing>, int) current = queue.removeFirst();
       final Routing parent = current.$1;
-      final List<Routing> children = current.$2;
+      final Iterable<Routing> children = current.$2;
       final int currentDepth = current.$3;
 
       final int index = currentDepth - 1;
@@ -102,7 +106,7 @@ final class RoutingGeneratorBuilder extends Builder {
       for (final child in children) {
         if (child.path.pathSegments.length > index) {
           final String segmentKey = child.path.pathSegments[index];
-          childMap.putIfAbsent(segmentKey, () => []).add(child);
+          childMap.putIfAbsent(segmentKey, _createArray).add(child);
           nextLevelChildren.add(child);
         }
       }
@@ -117,6 +121,7 @@ final class RoutingGeneratorBuilder extends Builder {
       if (childMap.containsKey(parentSegment)) {
         for (final child in childMap[parentSegment]!) {
           if (child == parent) {
+            print("hello true aqui");
             continue;
           }
 
@@ -200,10 +205,10 @@ final class RoutingGeneratorBuilder extends Builder {
               ..url = 'package:flutter/widgets.dart',
       ),
       Directive(
-            (builder) =>
-        builder
-          ..type = DirectiveType.import
-          ..url = 'package:go_router/go_router.dart',
+        (builder) =>
+            builder
+              ..type = DirectiveType.import
+              ..url = 'package:go_router/go_router.dart',
       ),
     ];
     final routeBuffer = StringBuffer('[');
@@ -238,7 +243,7 @@ final class RoutingGeneratorBuilder extends Builder {
 
       // Process annotated elements in a single pass (O(m))
       for (final element in annotatedElements) {
-        print(element.annotation.objectValue);
+        print(element.element.runtimeType);
         final routingInstance = Routing(
           object: element.annotation.objectValue,
           page: element.element.displayName,

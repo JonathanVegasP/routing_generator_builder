@@ -104,14 +104,14 @@ final class RoutingGeneratorBuilder extends Builder {
 
       // Group child routes by their segment at the current depth
       for (final child in children) {
-        if (child.path.pathSegments.length > index) {
+        if (child.path.pathSegments.length > currentDepth) {
           final String segmentKey = child.path.pathSegments[index];
           childMap.putIfAbsent(segmentKey, _createArray).add(child);
           nextLevelChildren.add(child);
         }
       }
 
-      if (parent.path.pathSegments.length - 1 > index) {
+      if (parent.path.pathSegments.length > currentDepth) {
         queue.add((parent, nextLevelChildren, currentDepth + 1));
         continue;
       }
@@ -146,6 +146,7 @@ final class RoutingGeneratorBuilder extends Builder {
       final String routePage = route.page;
       final List<Routing> childRoutes = route.children;
       final String isConstant = route.isConst;
+      final bool isMethod = route.isMethod;
 
       // Use a single write call for better performance
       routeBuffer.write("GoRoute(path: '/$routePath'");
@@ -154,32 +155,36 @@ final class RoutingGeneratorBuilder extends Builder {
         routeBuffer.write(", name: '$routeName'");
       }
 
-      routeBuffer.write(", builder: _build$routePage");
-      methods.add(
-        Method(
-          (builder) =>
-              builder
-                ..name = '_build$routePage'
-                ..returns = refer('Widget')
-                ..lambda = true
-                ..static = true
-                ..requiredParameters.addAll([
-                  Parameter(
-                    (builder) =>
-                        builder
-                          ..name = 'context'
-                          ..type = refer('BuildContext'),
-                  ),
-                  Parameter(
-                    (builder) =>
-                        builder
-                          ..name = 'state'
-                          ..type = refer('GoRouterState'),
-                  ),
-                ])
-                ..body = Code('$isConstant $routePage()'),
-        ),
-      );
+      if (isMethod) {
+        routeBuffer.write(", pageBuilder: $routePage");
+      } else {
+        routeBuffer.write(", builder: _build$routePage");
+        methods.add(
+          Method(
+            (builder) =>
+                builder
+                  ..name = '_build$routePage'
+                  ..returns = refer('Widget')
+                  ..lambda = true
+                  ..static = true
+                  ..requiredParameters.addAll([
+                    Parameter(
+                      (builder) =>
+                          builder
+                            ..name = 'context'
+                            ..type = refer('BuildContext'),
+                    ),
+                    Parameter(
+                      (builder) =>
+                          builder
+                            ..name = 'state'
+                            ..type = refer('GoRouterState'),
+                    ),
+                  ])
+                  ..body = Code('$isConstant $routePage()'),
+          ),
+        );
+      }
 
       // Process child routes efficiently
       if (childRoutes.isNotEmpty) {
@@ -243,10 +248,29 @@ final class RoutingGeneratorBuilder extends Builder {
 
       // Process annotated elements in a single pass (O(m))
       for (final element in annotatedElements) {
-        print(element.element.runtimeType);
+        final el = element.element;
+        var isMethod = false;
+        var page = element.element.displayName;
+        if (el is ClassElement) {
+          final method = el.getMethod('createPage');
+
+          if (method != null) {
+            if (method.isStatic &&
+                method.returnType.getDisplayString().startsWith('Page')) {
+              final parameters = method.parameters;
+              if (parameters.length == 2 &&
+                  parameters[0].type.getDisplayString() == 'BuildContext' &&
+                  parameters[1].type.getDisplayString() == 'GoRouterState') {
+                isMethod = true;
+                page = '$page.${method.displayName}';
+              }
+            }
+          }
+        }
         final routingInstance = Routing(
           object: element.annotation.objectValue,
-          page: element.element.displayName,
+          page: page,
+          isMethod: isMethod,
           isConst: switch (element.element) {
             ClassElement(unnamedConstructor: final constructor) =>
               constructor?.isConst == true ? ' const' : '',

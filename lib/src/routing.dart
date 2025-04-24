@@ -4,6 +4,7 @@ final class Routing {
   final Uri path;
   final String? name;
   final String page;
+  final bool isMethod;
   final String isConst;
   final List<Routing> children = [];
   int skip = 0;
@@ -20,6 +21,7 @@ final class Routing {
   Routing({
     required DartObject object,
     required this.page,
+    required this.isMethod,
     required this.isConst,
   }) : path = _createUri(object.getField('path')!.toStringValue()!),
        name = object.getField('name')!.toStringValue();
